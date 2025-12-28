@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -100,20 +102,22 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         
         // Generate a random reset token
-        $token = bin2hex(random_bytes(32));
+        $token = Str::random(64);
         
-        // Store token in session or database (for now using session)
-        $request->session()->put('password_reset_token_' . $user->id, [
-            'token' => $token,
-            'email' => $user->email,
-            'expires_at' => now()->addHours(1)
-        ]);
+        // Store token in database
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $user->email],
+            [
+                'token' => $token,
+                'created_at' => now()
+            ]
+        );
 
         // Send email
         try {
             \Mail::send('emails.password-reset', [
                 'user' => $user,
-                'resetLink' => url('/password/reset/' . $token)
+                'resetLink' => url('/password/reset/' . $token) . '?email=' . urlencode($user->email)
             ], function($message) use ($user) {
                 $message->to($user->email);
                 $message->subject('Smart Dairy - Password Reset Request');
@@ -131,5 +135,46 @@ class AuthController extends Controller
                 'message' => 'Failed to send email. Please try again later.'
             ], 500);
         }
+    }
+
+    public function showResetForm(Request $request, $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => $request->email
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $reset = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->where('token', $request->token)
+            ->first();
+
+        if (!$reset) {
+            return back()->withErrors(['email' => 'Invalid password reset token.']);
+        }
+
+        // Check if token is older than 60 minutes
+        if (now()->parse($reset->created_at)->addMinutes(60)->isPast()) {
+            DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return back()->withErrors(['email' => 'This password reset link has expired.']);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Delete the token
+        DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        return redirect('/login')->with('success', 'Your password has been reset successfully. You can now login.');
     }
 }

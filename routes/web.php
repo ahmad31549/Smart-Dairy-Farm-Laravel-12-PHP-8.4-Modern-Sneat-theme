@@ -33,7 +33,9 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Password Reset Routes
-Route::post('/password/reset-request', [AuthController::class, 'passwordResetRequest']);
+Route::get('/password/reset/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
+Route::post('/password/reset', [AuthController::class, 'resetPassword'])->name('password.update');
+Route::post('/password/reset-request', [AuthController::class, 'passwordResetRequest'])->name('password.request');
 
 // Protected Routes
 Route::middleware('auth')->group(function () {
