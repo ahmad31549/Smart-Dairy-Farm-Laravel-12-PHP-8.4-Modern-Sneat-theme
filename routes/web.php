@@ -199,6 +199,11 @@ Route::middleware('auth')->group(function () {
     Route::put('/api/animals/{id}', [ApiController::class, 'updateAnimal']);
     Route::delete('/api/animals/{id}', [ApiController::class, 'destroyAnimal']);
     Route::get('/api/milk-production-chart', [ApiController::class, 'getMilkProductionChart']);
+    Route::get('/api/employees', [EmployeeController::class, 'getEmployees']);
+    Route::get('/api/employees/{id}', [EmployeeController::class, 'getEmployee']);
+    Route::post('/api/employees', [EmployeeController::class, 'storeApi']);
+    Route::put('/api/employees/{id}', [EmployeeController::class, 'updateApi']);
+    Route::delete('/api/employees/{id}', [EmployeeController::class, 'destroyApi']);
 
     // Profile Routes
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');

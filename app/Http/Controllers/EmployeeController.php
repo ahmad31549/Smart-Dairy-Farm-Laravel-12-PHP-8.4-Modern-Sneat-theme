@@ -120,4 +120,76 @@ class EmployeeController extends Controller
         $employees = $this->filteredQuery($request)->get();
         return view('employee.print', compact('employees'));
     }
+
+    public function getEmployees(Request $request)
+    {
+        return response()->json(Employee::latest()->get());
+    }
+
+    public function getEmployee($id)
+    {
+        return response()->json(Employee::findOrFail($id));
+    }
+
+    public function storeApi(Request $request)
+    {
+        $data = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:employees,email',
+            'phone' => 'nullable|string',
+            'position' => 'required|string',
+            'department' => 'required|string',
+            'hire_date' => 'required|date',
+            'salary' => 'nullable|numeric',
+            'address' => 'nullable|string',
+        ]);
+
+        $data['employee_id'] = $this->employeeService->generateEmployeeId();
+        $data['status'] = 'active';
+
+        $employee = Employee::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee created successfully',
+            'data' => $employee
+        ]);
+    }
+
+    public function updateApi(Request $request, $id)
+    {
+        $employee = Employee::findOrFail($id);
+        
+        $data = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:employees,email,' . $id,
+            'phone' => 'nullable|string',
+            'position' => 'required|string',
+            'department' => 'required|string',
+            'hire_date' => 'required|date',
+            'salary' => 'nullable|numeric',
+            'status' => 'required|in:active,inactive,terminated',
+            'address' => 'nullable|string',
+        ]);
+
+        $employee->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee updated successfully'
+        ]);
+    }
+
+    public function destroyApi($id)
+    {
+        $employee = Employee::findOrFail($id);
+        $employee->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee deleted successfully'
+        ]);
+    }
 }
